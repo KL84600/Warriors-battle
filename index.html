@@ -7,6 +7,8 @@
   document.body.appendChild(script);
 })();
 </script>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,14 +56,14 @@ const A={
 };
 
 // Terrain & Traversals
-let mode='boss',plats=[],pits=[],spikes=[],trails=[],tGoal=2600,tNext=0,tTheme=0,tSeed=1,tTitle='',tSub='';
+let mode='boss',plats=[],pits=[],spikes=[],trails=[],tGoal=2600,tNext=0,tTheme=0,tSeed=1,tTitle='',tSub='',terrainLanternUsed=false;
 function randT(){tSeed=(tSeed*1664525+1013904223)>>>0;return tSeed/4294967296}
 function groundY(x){
  for(const p of pits)if(x>p.x+8&&x<p.x+p.w-8)return H+120;
  return G;
 }
 function startTerrain(theme,nextBoss){
- mode='terrain';tTheme=theme;tNext=nextBoss;tSeed=(theme*9973+1337)>>>0;
+ mode='terrain';tTheme=theme;tNext=nextBoss;tSeed=(theme*9973+1337)>>>0;terrainLanternUsed=false;
  plats=[];pits=[];spikes=[];trails=[];swords=[];horses=[];waves=[];slashes=[];fbs=[];bolts=[];rf=[];rocks=[];deb=[];th=null;
  P.x=140;P.y=G;P.vx=0;P.vy=0;P.f=1;P.act='';P.blk=false;P.inv=.5;P.sth=0;P.kn=1;
  tTitle=theme===0?'GRAVEN VALLEY APPROACH':'THE ASHEN CAUSEWAY';
@@ -168,6 +170,11 @@ function updateTerrain(dt){
  for(const r of rings)r.t+=dt;rings=rings.filter(r=>r.t<.5);
  for(const n of nums){n.t+=dt;n.y-=40*dt}nums=nums.filter(n=>n.t<.9);
  shake*=.9;
+ // One-use healing lantern just before the next gate. Press E nearby to restore health.
+ const lanternX=tGoal-90;
+ if(!terrainLanternUsed&&pr('KeyE')&&Math.abs(P.x-lanternX)<62&&P.y>=G-4&&P.hp<PMAX){
+  P.hp=PMAX;terrainLanternUsed=true;num(P.x,G-82,'HEALED','#aaffc0',22);spark(lanternX,G-24,'#aaffc0',22);rings.push({x:lanternX,y:G-30,t:0,c:'#aaffc0',r:100});snd(660,.28,'sine',.1);
+ }
  // Reached end gate -> launch next boss!
  if(P.x>=tGoal){
   mode='boss';
@@ -222,6 +229,15 @@ function renderTerrain(){
   const lg=X.createRadialGradient(bx,by+12,2,bx,by+12,48);lg.addColorStop(0,tTheme===0?'rgba(160,210,255,.28)':'rgba(255,180,80,.32)');lg.addColorStop(1,'rgba(0,0,0,0)');
   X.fillStyle=lg;X.fillRect(bx-48,by-36,96,96);
  }
+ // Healing lantern immediately before the next-boss gate.
+ const lanternX=tGoal-90;
+ if(!terrainLanternUsed){
+  const glow=X.createRadialGradient(lanternX,G-42,2,lanternX,G-42,74);glow.addColorStop(0,'rgba(255,220,130,.38)');glow.addColorStop(1,'rgba(255,190,90,0)');X.fillStyle=glow;X.fillRect(lanternX-74,G-116,148,116);
+  X.fillStyle='#4a3828';X.fillRect(lanternX-17,G-12,34,12);X.fillRect(lanternX-12,G-40,24,28);
+  X.strokeStyle='#b68a4d';X.lineWidth=3;X.strokeRect(lanternX-12,G-70,24,30);
+  X.fillStyle='#ffe5a0';X.beginPath();X.moveTo(lanternX,G-65);X.quadraticCurveTo(lanternX-13,G-49,lanternX,G-43);X.quadraticCurveTo(lanternX+13,G-49,lanternX,G-65);X.fill();
+  if(Math.abs(P.x-lanternX)<100)txt('E  RESTORE',lanternX,G-90,14,'#ffe5a0');
+ }else{X.fillStyle='#5a5147';X.fillRect(lanternX-12,G-40,24,28);X.strokeStyle='#62594f';X.lineWidth=3;X.strokeRect(lanternX-12,G-70,24,30)}
  // Platforms
  for(const pl of plats){
   if(pl.gate)continue;
@@ -320,7 +336,7 @@ function lidaUpdate(dt){
  if(B.ph===1&&B.hp<=B.max*.5){
   B.ph=2;B.form='hag';B.st='lshift';B.t=0;B.atk=null;B.tel=0;
   // Phase 2 turns Lida into a stationary part of the arena backdrop.
-  B.anchorX=1265;B.x=B.anchorX;lidaArena.table=1;lidaArena.spikes=1;
+  B.anchorX=1385;B.x=B.anchorX;lidaArena.table=1;lidaArena.spikes=1;
   shake=20;flash=.25;snd(65,1.1,'sawtooth',.2);
   spark(1200,G-40,'#d8c7a8',36);rings.push({x:1200,y:G-40,t:0,c:'#ff4a3a',r:200});
   return;
@@ -410,10 +426,12 @@ function lidaUpdate(dt){
    B.cleaveGap=next;B.cleaveWarnFor=B.sk;
   }
   if(B.sk<8&&t>=waveTime){
+   // Clear the previous wave's embedded table knives as the new wave begins.
+   swords=swords.filter(s=>!s.tableLanded);
    B.sk++;B.cleaveWarn=0;snd(440,.16,'sawtooth',.09);
    for(let i=0;i<tableXs.length;i++){
     if(i===B.cleaveGap||i===B.cleaveGap+1)continue;
-    swords.push({ox:0,oy:0,x:tableXs[i],y:G-300,t:0,w:0,hov:0,c:'r',a:Math.PI,vx:0,vy:420,tableDrop:1});
+    swords.push({ox:0,oy:0,x:tableXs[i],y:G-550,t:0,w:0,hov:0,c:'r',a:Math.PI,vx:0,vy:420,tableDrop:1});
    }
   }
  }else if(n==='cone'){
