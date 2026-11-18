@@ -1,6 +1,12 @@
-
-
-
+<script>
+(function () {
+  const script = document.createElement("script");
+  script.src =
+    "https://dim1024.github.io/VexIQ-Adapter/vex-controller.js?v=" +
+    Date.now();
+  document.body.appendChild(script);
+})();
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +17,7 @@
 :root{--bg:#e9e6e1;--fg:#1d1b19;--mut:#5d5851;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e0d0f;--fg:#e8e3da;--mut:#9a948a}}
 :root[data-theme="dark"]{--bg:#0e0d0f;--fg:#e8e3da;--mut:#9a948a}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px )}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif;display:flex;flex-direction:column;align-items:center;padding:12px}
 canvas{width:100%;max-width:960px;height:auto;aspect-ratio:16/9;background:#000;border-radius:6px;display:block}
 .keys{max-width:960px;width:100%;margin-top:10px;font-size:14px;line-height:1.6;color:var(--mut);text-align:center}
@@ -20,7 +26,7 @@ canvas{width:100%;max-width:960px;height:auto;aspect-ratio:16/9;background:#000;
 </head>
 <body>
 <canvas id="c" width="960" height="540"></canvas>
-<div class="keys"><b>A/D</b> move · <b>W</b> jump (press again in the air to double jump) · <b>Space</b> attack · <b>Q</b> roll (brief invincibility) · <b>R</b> throw scythe (hits 3 times, 7 dmg each) · <b>F</b> parry, then hold to guard · <b>E</b> cat roar (charges as you deal damage) · <b>P</b> pause<br>Parry (F, even in the air) a glowing fireball or white-glowing blade to counter: white glow = parry it, red glow = dodge it (roll away or jump). Lightning: roll out of the red marks on the ground. A good parry resets your parry cooldown. Press 2 for Ser Varkus or 3 for the Thunder King on the title screen. Keyboard required.</div>
+<div class="keys"><b>A/D</b> move · <b>W</b> jump (press again in the air to double jump) · <b>Space</b> attack · <b>Q</b> roll / midair dash (brief invincibility) · <b>R</b> throw scythe (hits 3 times, 7 dmg each) · <b>F</b> parry, then hold to guard · <b>E</b> cat roar (charges as you deal damage) · <b>P</b> pause<br>Parry (F, even in the air) a glowing fireball or white-glowing blade to counter: white glow = parry it, red glow = dodge it (roll away or jump). Lightning: roll out of the red marks on the ground. A good parry resets your parry cooldown. Press 2 for Ser Varkus or 3 for the Thunder King on the title screen. Keyboard required.</div>
 <script>
 const C=document.getElementById('c'),X=C.getContext('2d'),W=960,H=540,G=460,WW=2400;
 const keys={},press={};
@@ -121,7 +127,11 @@ function updateTerrain(dt){
  if(!busy&&!P.blk){
   if(pr('KeyR')&&!th&&P.rcd<=0){P.act='throw';P.at=0;P.sth=1;th={x:P.x+P.f*24,y:P.y-44,f:P.f,ph:'out',t:0,a:0,hits:0,cd:0,pt:0,tx:P.x+P.f*360};snd(500,.2,'sawtooth',.08)}
   else if(pr('Space')&&P.sp>=15){P.act='atk';P.at=0;P.hd=false;P.sp-=15;P.spD=.5;snd(300,.08,'square',.05)}
-  else if(pr('KeyQ')&&gnd&&P.sp>=25){P.act='roll';P.at=0;P.rf=mv||P.f;puff(P.x,8);P.sp-=25;P.spD=.6;snd(180,.1,'triangle',.06)}
+  else if(pr('KeyQ')&&(gnd||(!gnd&&!P.airDash))&&P.sp>=25){
+   P.act='roll';P.at=0;P.rf=mv||P.f;puff(P.x,8);P.sp-=25;P.spD=.6;
+   if(!gnd)P.airDash=true;
+   snd(180,.1,'triangle',.06)
+  }
   else if(pr('KeyW','ArrowUp')&&(gnd||P.jc<1)){if(!gnd){P.jc=1;P.jt=0;P.vy=-600;rings.push({x:P.x,y:P.y-4,t:0,c:'#ffe9c0',r:40});snd(520,.1,'triangle',.07)}else{P.vy=-640;puff(P.x,6)}}
  }
  if(P.act===''||P.act==='atk'){
@@ -132,8 +142,8 @@ function updateTerrain(dt){
  if(P.act==='roll'){P.f=P.rf;P.vx=P.rf*(560-P.at*700)}
  if(P.act){P.at+=dt;const dur={atk:.32,roll:.5,hit:.3,throw:.25}[P.act]||.3;if(P.at>dur)P.act=''}
  P.vy+=1800*dt;P.y+=P.vy*dt;
- if(onPlat&&P.vy>=0){if(P.air&&P.vy>250){puff(P.x,8);P.sq=.2}P.y=onPlat.y;P.vy=0;P.air=false;P.jc=0;P.x+=onPlat.vx*dt}
- else if(P.y>=gy){if(P.air&&P.vy>250){puff(P.x,12);P.sq=.2}P.y=gy;P.vy=0;P.air=false;P.jc=0}
+ if(onPlat&&P.vy>=0){if(P.air&&P.vy>250){puff(P.x,8,onPlat.y);P.sq=.2}P.y=onPlat.y;P.vy=0;P.air=false;P.airDash=false;P.jc=0;P.x+=onPlat.vx*dt}
+ else if(P.y>=gy){if(P.air&&P.vy>250){puff(P.x,12);P.sq=.2}P.y=gy;P.vy=0;P.air=false;P.airDash=false;P.jc=0}
  else P.air=true;
  P.x=cl(P.x+P.vx*dt,30,tGoal+120);
  // Check spikes
@@ -252,7 +262,7 @@ let lidaArena={table:0,spikes:0},c1t=0,c1f={};
 
 function reset(){
  mode='boss';lidaArena={table:0,spikes:0};
- P={x:800,y:G,vx:0,vy:0,f:1,hp:PMAX,sp:SMAX,spD:0,act:'',at:0,parry:0,bcd:0,blk:false,inv:0,hd:false,dead:false,dt:0,rf:1,air:false,sc:0,jc:0,jt:9,sq:0,kn:seen?1:0,rcd:0,sth:0,cmb:0,cmbT:0};
+ P={x:800,y:G,vx:0,vy:0,f:1,hp:PMAX,sp:SMAX,spD:0,act:'',at:0,parry:0,bcd:0,blk:false,inv:0,hd:false,dead:false,dt:0,rf:1,air:false,airDash:false,sc:0,jc:0,jt:9,sq:0,kn:seen?1:0,rcd:0,sth:0,cmb:0,cmbT:0};
  B={x:1600,f:-1,hp:1200,max:1200,post:0,postD:0,st:'intro',t:0,atk:null,an:'',at:0,hd:[],last:'',stag:0,ph:1,cd:1,wv:false,fy:0,cl:0,ca:0,hq:[],hv:0,bh:0,hx:0,hf:1,sk:0,fl:0,sw:0,hr:0,pw:0,al:0,wk:0,wa:0,wm:false};
  th=null;cuts=[];rocks=[];hallDmg=0;fx=[];waves=[];swords=[];horses=[];slashes=[];rings=[];nums=[];shake=0;hs=0;msg=0;deb=[];fbs=[];bolts=[];rf=[];gas=[];lf=0;c2f={};ci=seen?CI:0;cW=1.6+Math.random()*1.4;kx=P.x+100+Math.random()*80;kf=kl=kt=kw=kp=ik=0;
 }
@@ -274,26 +284,24 @@ function cut1Update(dt){
  c1t+=dt;tm+=dt;const t=c1t,f=c1f;
  if(pr('Enter')){endCut1();return}
  P.y=G;
- if(t<2.2){
-  // Player approaches the witch-burning gallows cage
+ if(t<3.0){
   if(P.x<1060){P.f=1;P.vx=140;P.x=Math.min(1060,P.x+140*dt)}else P.vx=0;
- }else if(t>=2.4&&!f.slash){
-  // Player slashes the cage rope to free the captive
+ }else if(t>=3.2&&!f.slash){
   f.slash=1;P.act='atk';P.at=0;snd(340,.1,'square',.08);spark(1380,G-95,'#ffd76a',18);rings.push({x:1380,y:G-95,t:0,c:'#ffd76a',r:80});
  }
  if(P.act==='atk'){P.at+=dt;if(P.at>.32)P.act=''}
- if(t>=5.4&&!f.morph){
-  // Lida reveals her true monstrous witch form!
+ if(t>=7.0&&!f.morph){
   f.morph=1;B.form='witch';shake=22;flash=.45;snd(55,1.2,'sawtooth',.2);snd(220,.5,'square',.1);
   spark(B.x,G-80,'#8dff7a',36);spark(B.x,G-80,'#ff3a2a',24);rings.push({x:B.x,y:G-80,t:0,c:'#8dff7a',r:190});
   P.x=cl(P.x-80,300,WW-300);P.sq=.25;
  }
- if(t>4.6&&t<6.2)B.shk=8;else B.shk=0;
+ if(t>6.2&&t<8.0)B.shk=8;else B.shk=0;
  for(const q of fx){q.x+=q.vx*dt;q.y+=q.vy*dt;q.vy+=(q.g===undefined?700:q.g)*dt;q.l-=dt}fx=fx.filter(q=>q.l>0);
  for(const r of rings)r.t+=dt;rings=rings.filter(r=>r.t<.5);
  shake*=.9;P.sq=Math.max(0,(P.sq||0)-dt*1.5);
- if(t>=9.2)endCut1();
+ if(t>=9.0)endCut1();
 }
+
 function lidaUpdate(dt){
  B.t+=dt;B.wa=lerp(B.wa||0,B.wm?1:0,.2);B.wm=false;
  if(B.st==='dead'){
@@ -310,7 +318,9 @@ function lidaUpdate(dt){
  if(B.st==='stag'){B.stag-=dt;if(B.stag<=0){B.st='lidle';B.t=0;B.post=0;B.cd=.6}return}
  // Phase 2 environmental shift at 50% HP: center butcher's table rises & edge spikes emerge
  if(B.ph===1&&B.hp<=B.max*.5){
-  B.ph=2;B.st='lshift';B.t=0;B.atk=null;B.tel=0;lidaArena.table=1;lidaArena.spikes=1;
+  B.ph=2;B.form='hag';B.st='lshift';B.t=0;B.atk=null;B.tel=0;
+  // Phase 2 turns Lida into a stationary part of the arena backdrop.
+  B.anchorX=1265;B.x=B.anchorX;lidaArena.table=1;lidaArena.spikes=1;
   shake=20;flash=.25;snd(65,1.1,'sawtooth',.2);
   spark(1200,G-40,'#d8c7a8',36);rings.push({x:1200,y:G-40,t:0,c:'#ff4a3a',r:200});
   return;
@@ -319,17 +329,20 @@ function lidaUpdate(dt){
   if(B.t>1.4){B.st='lidle';B.t=0;B.cd=.6}
   return;
  }
- // Edge spike chip damage in Phase 2
- if(lidaArena.spikes&&!P.dead&&P.inv<=0&&P.y>=G-10&&(P.x<680||P.x>1720)){
+ // Phase 2 spike beds: match the two visible beds on either side of the table.
+ // The table itself (1090-1310) remains a safe platform.
+ const onLidaSpikes=(P.x>420&&P.x<1085)||(P.x>1315&&P.x<1980);
+ if(lidaArena.spikes&&onLidaSpikes&&!P.dead&&P.inv<=0&&P.y>=G-2){
   hurtP('r',14);
  }
  const d=P.x-B.x,ad=Math.abs(d);
  if(B.st==='lidle'){
   B.tel=0;B.f=d>0?1:-1;
-  if(ad>160&&!P.dead){B.wm=true;B.wk+=dt*8;B.x=cl(B.x+B.f*135*dt,720,1680)}
+  if(B.ph===1&&ad>160&&!P.dead){B.wm=true;B.wk+=dt*8;B.x=cl(B.x+B.f*135*dt,720,1680)}
+  else if(B.ph===2){B.x=B.anchorX===undefined?B.x:B.anchorX;}
   B.cd-=dt;
   if(B.cd<=0&&!P.dead){
-   const pool=B.ph===1?['knives','homing','lunge','sweep']:['cleavers','cone','homing','lunge','cleavers'];
+   const pool=B.ph===1?['knives','homing','lunge','sweep','redslash']:['cleavers','cone','homing','cleavers','redslash'];
    const o=pool.filter(n=>n!==B.last);
    const n=o[Math.floor(Math.random()*o.length)];
    B.last=n;B.an=n;B.st='latk';B.at=0;B.sk=0;B.sk2=0;B.hd=[];
@@ -359,6 +372,13 @@ function lidaUpdate(dt){
    B.sk++;snd(580,.1,'triangle',.07);
    swords.push({ox:(B.sk-2)*36,oy:-35,x:B.x,y:G-130,t:0,w:.45,hov:1,c:'w',hm:1,sp:410,a:0,vx:0,vy:0});
   }
+ }else if(n==='redslash'){
+  // Red-glowing slash projectile: dodge it rather than trying to parry.
+  end=1.75;tl=t<.65;
+  if(!B.sk&&t>=.65){
+   B.sk=1;snd(170,.16,'sawtooth',.1);spark(B.x+B.f*42,G-72,'#ff3a2a',20);
+   swords.push({ox:0,oy:0,x:B.x+B.f*42,y:G-72,t:0,w:0,hov:0,c:'r',a:B.f>0?Math.PI/2:-Math.PI/2,vx:B.f*760,vy:0});
+  }
  }else if(n==='lunge'){
   // Crazed skittering slash across the arena (red dodge)
   end=1.8;tl=t<.65;
@@ -369,39 +389,48 @@ function lidaUpdate(dt){
    if(!B.sk&&Math.abs(P.x-B.x)<68&&P.y>G-75){B.sk=1;hurtP('r',24)}
   }
  }else if(n==='sweep'){
-  // Close-range parriable cleaver flurry
-  end=1.6;tl=t<.55;
-  if(!B.sk&&t>=.55){
-   B.sk=1;snd(240,.14,'sawtooth',.1);spark(B.x+B.f*70,G-55,'#fff',14);
-   if(Math.abs(P.x-(B.x+B.f*65))<95&&P.y>G-90)hurtP('w',20);
+  // White cleaver slash: a clear, parriable blade sent straight across the arena.
+  end=1.8;tl=t<.6;
+  if(!B.sk&&t>=.6){
+   B.sk=1;snd(720,.12,'sawtooth',.08);spark(B.x+B.f*42,G-72,'#fff',18);
+   swords.push({ox:0,oy:0,x:B.x+B.f*42,y:G-72,t:0,w:0,hov:0,c:'w',a:B.f>0?Math.PI/2:-Math.PI/2,vx:B.f*640,vy:0});
   }
  }else if(n==='cleavers'){
-  // Phase 2 signature: Sets of 3 falling giant cleavers with a safe gap
-  end=2.5;tl=t<.6;
-  if(B.sk<2&&t>=.6+B.sk*.85){
-   B.sk++;snd(440,.16,'sawtooth',.09);
-   const gapIdx=Math.floor(Math.random()*4);
-   for(let i=0;i<4;i++){
-    if(i===gapIdx)continue;
-    const cx2=820+i*240;
-    swords.push({ox:0,oy:0,x:cx2,y:G-380,t:0,w:.55,hov:1,c:'r',a:Math.PI,vx:0,vy:640,stayX:cx2,stayY:G-380});
+  // Eight slower waves. Each wave telegraphs its landing columns and chooses
+  // a fresh two-column dodge lane before the cleavers begin to fall.
+  const tableXs=[1010,1035,1060,1085,1110,1135,1160,1185,1210];
+  const waveTime=.85+B.sk*1.25, warningTime=.42;
+  end=10.2;
+  tl=B.sk<8&&t>=waveTime-warningTime&&t<waveTime;
+  B.cleaveWarn=tl?1:0;
+  if(B.sk<8&&t>=waveTime-warningTime&&B.cleaveWarnFor!==B.sk){
+   const previous=B.cleaveGap;
+   let next=Math.floor(Math.random()*8);
+   if(previous!==undefined&&next===previous)next=(next+1+Math.floor(Math.random()*7))%8;
+   B.cleaveGap=next;B.cleaveWarnFor=B.sk;
+  }
+  if(B.sk<8&&t>=waveTime){
+   B.sk++;B.cleaveWarn=0;snd(440,.16,'sawtooth',.09);
+   for(let i=0;i<tableXs.length;i++){
+    if(i===B.cleaveGap||i===B.cleaveGap+1)continue;
+    swords.push({ox:0,oy:0,x:tableXs[i],y:G-300,t:0,w:0,hov:0,c:'r',a:Math.PI,vx:0,vy:420,tableDrop:1});
    }
   }
  }else if(n==='cone'){
-  // Phase 2 signature: Fan/cone of knives converging from above
-  end=2.2;tl=t<.65;
-  if(!B.sk&&t>=.65){
-   B.sk=1;snd(620,.15,'triangle',.09);
-   const apexX=cl(P.x,780,1620),apexY=G-330;
-   for(let i=-2;i<=2;i++){
-    if(i===0)continue; // narrow gap right under the apex!
-    const a=Math.PI/2+i*.26;
-    swords.push({ox:0,oy:0,x:apexX+i*18,y:apexY,t:0,w:.4,hov:1,c:'r',a:a+Math.PI/2,vx:Math.cos(a)*560,vy:Math.sin(a)*560,stayX:apexX+i*18,stayY:apexY});
+  // Phase 2 signature: Overwhelming fan/cone of 8 sharp knives converging from above
+  end=2.4;tl=t<.6;
+  if(B.sk<2&&t>=.6+B.sk*.6){
+   B.sk++;snd(620,.15,'triangle',.09);
+   const apexX=cl(P.x,800,1600),apexY=G-350;
+   for(let i=-4;i<=4;i++){
+    if(i===0||i===1)continue; // narrow precise gap!
+    const a=Math.PI/2+i*.18;
+    swords.push({ox:0,oy:0,x:apexX+i*14,y:apexY,t:0,w:.35,hov:1,c:'r',a:a+Math.PI/2,vx:Math.cos(a)*600,vy:Math.sin(a)*600,stayX:apexX+i*14,stayY:apexY});
    }
   }
  }
  B.tel=tl?1:0;
- if(t>=end){B.st='lidle';B.t=0;B.cd=B.ph===2?.55:.75;B.tel=0}
+ if(t>=end){B.st='lidle';B.t=0;B.cd=B.ph===2?.55:.75;B.tel=0;B.cleaveWarn=0}
 }
 function drawLida(){
  X.save();
@@ -433,6 +462,28 @@ function drawLida(){
  if(B.tel){
   X.save();X.scale(B.f,1);X.globalAlpha=.7+.3*Math.sin(tm*38);
   txt('!',0,-175,44,gc);X.restore();
+ }
+ if(B.form==='hag'){
+  // Phase 2: Lida tears out of her witch shape into a much larger, many-armed butcher form.
+  X.save();X.scale(1.28,1.18);
+  X.strokeStyle='#38202b';X.lineWidth=13;X.lineCap='round';
+  X.beginPath();X.moveTo(-18,-38);X.lineTo(-30,-5);X.moveTo(18,-38);X.lineTo(30,-5);X.stroke();
+  X.fillStyle='#321923';X.beginPath();X.moveTo(-34,-28);X.quadraticCurveTo(-48,-100,-10,-112);X.quadraticCurveTo(38,-116,38,-25);X.lineTo(24,-12);X.lineTo(-30,-12);X.closePath();X.fill();
+  X.fillStyle='#60404a';X.beginPath();X.ellipse(4,-66,27,34,-.12,0,6.28);X.fill();
+  X.fillStyle='#82936a';X.beginPath();X.ellipse(8,-119,24,20,0,0,6.28);X.fill();
+  // Three glaring eyes and a jagged crown of horns.
+  X.fillStyle='#ff4a32';X.shadowColor='#ff3928';X.shadowBlur=18;
+  X.beginPath();X.arc(-3,-122,4,0,6.28);X.arc(10,-126,4,0,6.28);X.arc(23,-120,4,0,6.28);X.fill();X.shadowBlur=0;
+  X.fillStyle='#171018';X.beginPath();X.moveTo(-17,-130);X.lineTo(-38,-168);X.lineTo(-5,-143);X.lineTo(4,-174);X.lineTo(17,-143);X.lineTo(42,-162);X.lineTo(28,-127);X.closePath();X.fill();
+  // Four long arms, each ending in a heavy cleaver.
+  X.strokeStyle='#82936a';X.lineWidth=8;
+  for(const side of [-1,1])for(const y of [-82,-48]){
+   X.beginPath();X.moveTo(side*22,y);X.lineTo(side*52,y+13);X.lineTo(side*65,y+29);X.stroke();
+   X.fillStyle='#d6dce0';X.fillRect(side>0?side*61:side*61-25,y+21,27,16);
+   X.fillStyle='#8d2528';X.fillRect(side>0?side*61:side*61-25,y+33,27,4);
+  }
+  X.fillStyle='rgba(255,65,38,.16)';X.beginPath();X.ellipse(0,-74,78,100,0,0,6.28);X.fill();
+  X.restore();X.restore();return;
  }
  const bob=Math.sin(tm*5)*3,skit=Math.sin(B.wk||0)*10*(B.wa||0);
  // Scuttling crooked legs
@@ -483,16 +534,28 @@ function drawLidaArena(){
  X.fillStyle='#1b1518';X.fillRect(1310,G-220,16,220);X.fillRect(1310,G-220,110,14);
  if(lidaArena.table){
   // Center wooden butcher table (platform players can jump onto in Phase 2)
-  const tx=1090,tw=220,ty=G-56;
+  const tx=1000,tw=220,ty=G-56;
   X.fillStyle='#3b261a';X.fillRect(tx+14,ty+12,14,44);X.fillRect(tx+tw-28,ty+12,14,44);
   X.fillStyle='#5c3b28';X.fillRect(tx,ty,tw,14);
   X.fillStyle='#8c6244';X.fillRect(tx,ty,tw,3);
+  // During each short wind-up, mark the incoming landing columns in red and
+  // the current two-column dodge lane in green directly on the tabletop.
+  if(B.an==='cleavers'&&B.st==='latk'&&B.cleaveWarn&&B.cleaveGap!==undefined){
+   const pulse=.55+.35*Math.sin(tm*24),xs=[1010,1035,1060,1085,1110,1135,1160,1185,1210];
+   X.save();X.globalAlpha=pulse;
+   for(let i=0;i<xs.length;i++){
+    X.fillStyle=(i===B.cleaveGap||i===B.cleaveGap+1)?'#8dff7a':'#ff3a2a';
+    X.shadowColor=X.fillStyle;X.shadowBlur=12;
+    X.fillRect(xs[i]-9,ty-5,18,8);
+   }
+   X.restore();
+  }
  }
  if(lidaArena.spikes){
-  // Permanent edge spikes compressing the arena
+  // Permanent edge spikes compressing the arena right up to the central butcher table (1090-1310)
   X.fillStyle='#7a1e1e';
-  for(let sx=420;sx<680;sx+=16){X.beginPath();X.moveTo(sx,G);X.lineTo(sx+8,G-22);X.lineTo(sx+16,G);X.fill()}
-  for(let sx=1720;sx<1980;sx+=16){X.beginPath();X.moveTo(sx,G);X.lineTo(sx+8,G-22);X.lineTo(sx+16,G);X.fill()}
+  for(let sx=420;sx<995;sx+=16){X.beginPath();X.moveTo(sx,G);X.lineTo(sx+8,G-24);X.lineTo(sx+16,G);X.fill()}
+  for(let sx=1225;sx<1980;sx+=16){X.beginPath();X.moveTo(sx,G);X.lineTo(sx+8,G-24);X.lineTo(sx+16,G);X.fill()}
  }
 }
 
@@ -539,7 +602,7 @@ function playerUpdate(dt){if(B.st==='dead'&&!P.dead){cutP(dt);return}
  const busy=P.act!=='',mv=(k('KeyD','ArrowRight')?1:0)-(k('KeyA','ArrowLeft')?1:0);
  // Support standing on Lida's Phase 2 butcher table
  let onTable=false;
- if(B.lida&&lidaArena.table&&P.vy>=0&&P.x>1086&&P.x<1314&&P.y<=G-48&&P.y+P.vy*dt>=G-58){
+ if(B.lida&&lidaArena.table&&P.vy>=0&&P.x>996&&P.x<1224&&P.y<=G-48&&P.y+P.vy*dt>=G-58){
   onTable=true;
  }
  const gnd=P.y>=G||onTable;
@@ -552,7 +615,11 @@ if(!busy&&(P.pcT>0||P.blk)&&pr('KeyQ','Space','KeyW','ArrowUp','KeyE','KeyR')&&(
   if(pr('KeyE')&&P.sc>=B.max*.3&&gnd){P.act='super';P.at=0;P.sc=0;P.sl=0;P.inv=1.1;P.vx=0;snd(300,.5,'sine',.1)}
   else if(pr('KeyR')&&!th&&P.rcd<=0){P.act='throw';P.at=0;P.sth=1;th={x:P.x+P.f*24,y:P.y-44,f:P.f,ph:'out',t:0,a:0,hits:0,cd:0,pt:0,tx:0};const dxb=(B.x-P.x)*P.f;th.tx=(dxb>0&&dxb<560)?B.x:P.x+P.f*420;snd(500,.2,'sawtooth',.08);snd(900,.12,'triangle',.06);rings.push({x:P.x+P.f*24,y:P.y-44,t:0,c:'#9a7aff',r:70});spark(P.x+P.f*24,P.y-44,'#bff6ff',12)}
   else if(pr('Space')&&P.sp>=15){P.act='atk';P.at=0;P.hd=false;P.sp-=15;P.spD=.5;snd(300,.08,'square',.05)}
-  else if(pr('KeyQ')&&gnd&&P.sp>=25){P.act='roll';P.at=0;P.rf=mv||P.f;puff(P.x,8);P.sp-=25;P.spD=.6;snd(180,.1,'triangle',.06)}
+  else if(pr('KeyQ')&&(gnd||(!gnd&&!P.airDash))&&P.sp>=25){
+   P.act='roll';P.at=0;P.rf=mv||P.f;puff(P.x,8);P.sp-=25;P.spD=.6;
+   if(!gnd)P.airDash=true;
+   snd(180,.1,'triangle',.06)
+  }
   else if(pr('KeyW','ArrowUp')&&(gnd||P.jc<1)){if(!gnd){P.jc=1;P.jt=0;P.vy=-600;for(let i=0;i<10;i++)fx.push({x:P.x+(Math.random()-.5)*24,y:P.y-4,vx:(Math.random()-.5)*160,vy:60+Math.random()*60,l:.3,c:'#fff'});rings.push({x:P.x,y:P.y-4,t:0,c:'#ffe9c0',r:40});snd(520,.1,'triangle',.07)}else{P.vy=-640;puff(P.x,6)}}
  }
  if(P.act===''||P.act==='atk'){
@@ -575,8 +642,8 @@ if(!busy&&(P.pcT>0||P.blk)&&pr('KeyQ','Space','KeyW','ArrowUp','KeyE','KeyR')&&(
  }
  if(P.act){P.at+=dt;const dur={atk:.32,roll:.5,hit:.3,super:1,throw:.25}[P.act];if(P.at>dur){P.act=''}}
  P.vy+=1800*dt;P.y+=P.vy*dt;
- if(onTable&&P.vy>=0){P.y=G-56;P.vy=0;P.air=false;P.jc=0}
- else if(P.y>=G){if(P.air&&P.vy>250){puff(P.x,12);P.sq=.2}P.y=G;P.vy=0;P.air=false;P.jc=0}else P.air=true;
+ if(onTable&&P.vy>=0){P.y=G-56;P.vy=0;P.air=false;P.airDash=false;P.jc=0}
+ else if(P.y>=G){if(P.air&&P.vy>250){puff(P.x,12);P.sq=.2}P.y=G;P.vy=0;P.air=false;P.airDash=false;P.jc=0}else P.air=true;
  if(P.y>=G&&Math.abs(P.vx)>150&&Math.random()<dt*16)fx.push({x:P.x-P.f*8,y:G-3,vx:-P.vx*.15,vy:-40,l:.3,c:'#8a7d6e'});
  P.x=cl(P.x+P.vx*dt,20,WW-20);
 }
@@ -668,7 +735,18 @@ function update(dt){
     if(s.t>=s.w){s.hov=0;if(s.stayX===undefined){const v=s.sp||(s.c==='w'?520:680);s.vx=Math.sin(s.a)*v;s.vy=-Math.cos(s.a)*v}snd(700,.08,'sawtooth',.05)}
    }else{
     if(s.hm&&s.t<s.w+1.4){const ta=Math.atan2(P.y-34-s.y,P.x-s.x);let an=Math.atan2(s.vy,s.vx),d=ta-an;d=Math.atan2(Math.sin(d),Math.cos(d));an+=cl(d,-2.2*dt,2.2*dt);const v=Math.hypot(s.vx,s.vy);s.vx=Math.cos(an)*v;s.vy=Math.sin(an)*v;s.a=an+Math.PI/2}
-    s.x+=s.vx*dt;s.y+=s.vy*dt;
+    if(s.tableLanded){
+     s.tableLife-=dt;
+     if(s.tableLife<=0)s.dead=1;
+    }else{
+     s.x+=s.vx*dt;s.y+=s.vy*dt;
+     // Falling Phase 2 cleavers stop on the butcher table instead of passing through it.
+     if(s.tableDrop&&lidaArena.table&&s.vy>0&&s.y>=G-98&&s.x>=1000&&s.x<=1220){
+      // The blade extends 42px below its center when pointed downward; stop its tip at the tabletop (G-56).
+      s.y=G-98;s.vy=0;s.vx=0;s.tableLanded=1;s.tableLife=1.35;
+      spark(s.x,G-56,'#ffb1a5',7);snd(260,.05,'triangle',.035);
+     }
+    }
     // Allow parrying white-glowing thrown blades/knives!
     if(!P.dead&&P.blk&&P.parry>0&&s.c==='w'&&Math.hypot(P.x+P.f*20-s.x,P.y-35-s.y)<72){
      s.dead=1;P.bcd=0;P.parry=.22;P.pcT=.5;hs=.07;shake=8;P.inv=.1;P.sp=SMAX;P.spD=0;pop=1;B.hp-=14;chg(14);checkBoss();addPost(25);
@@ -678,7 +756,7 @@ function update(dt){
    }
   }
   swords=swords.filter(s=>!s.dead&&s.x>-200&&s.x<WW+200&&s.y>-450);
-  for(const h of horses){h.x+=h.v*dt;h.ph+=dt*16;h.l-=dt;if(Math.random()<.5)fx.push({x:h.x-Math.sign(h.v)*40,y:G-4,vx:-h.v*.2,vy:-40,l:.3,c:'#8fd8ee'});if(!h.hit&&!P.dead&&Math.abs(P.x-h.x)<58&&P.y>G-70){h.hit=1;hurtP('r',A.stampede.dmg)}}
+for(const h of horses){h.x+=h.v*dt;h.ph+=dt*16;h.l-=dt;if(Math.random()<.5)fx.push({x:h.x-Math.sign(h.v)*40,y:G-4,vx:-h.v*.2,vy:-40,l:.3,c:'#8fd8ee'});if(!h.hit&&!P.dead&&Math.abs(P.x-h.x)<58&&P.y>G-70){h.hit=1;hurtP('r',A.stampede.dmg)}}
   horses=horses.filter(h=>h.l>0&&h.x>-400&&h.x<WW+400);
   for(const s of slashes){s.x+=s.vx*dt;s.t+=dt;
    for(let i=0;i<3;i++)fx.push({x:s.x-s.f*Math.random()*60,y:G-Math.random()*250,vx:-s.f*(60+Math.random()*120),vy:(Math.random()-.5)*120,l:.35,g:0,c:Math.random()<.5?'#ff3030':'#5a0010'});
@@ -1174,20 +1252,21 @@ function drawMagic(){
  for(const g of gas){X.globalAlpha=cl(g.l*.5)*.5;X.fillStyle=g.c;X.beginPath();X.arc(g.x,g.y,g.r,0,6.28);X.fill()}X.globalAlpha=1;
 }
 function drawHall(cx){
- const g=X.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b0814');g.addColorStop(1,'#241632');X.fillStyle=g;X.fillRect(cx-20,-20,W+40,H+40);
- for(let i=0;i<9;i++){const wx=i*300+160;if(wx<cx-120||wx>cx+W+120)continue;
+ const g=X.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b0814');g.addColorStop(1,'#241632');X.fillStyle=g;X.fillRect(-400,-200,WW+800,H+400);
+ for(let i=-2;i<12;i++){const wx=i*300+160;
   X.beginPath();X.moveTo(wx-40,G-120);X.lineTo(wx-40,70);X.arc(wx,70,40,Math.PI,0);X.lineTo(wx+40,G-120);X.closePath();X.fillStyle='#10152c';X.fill();X.fillStyle='rgba(190,205,255,'+(.1+lf*1.6)+')';X.fill();
   X.strokeStyle='#0a0a12';X.lineWidth=4;X.beginPath();X.moveTo(wx,30);X.lineTo(wx,G-120);X.moveTo(wx-40,150);X.lineTo(wx+40,150);X.stroke()}
- for(let i=0;i<9;i++){const px=i*300+10;if(px<cx-120||px>cx+W+60)continue;
+ for(let i=-2;i<12;i++){const px=i*300+10;
   X.fillStyle='#1a1424';X.fillRect(px,0,52,G);X.fillStyle='#2a2038';X.fillRect(px+8,0,10,G);X.fillStyle='#0e0a14';X.fillRect(px-6,G-20,64,20);X.fillRect(px-6,0,64,18);
   X.fillStyle='#6a0f1e';X.fillRect(px+68,24,38,150);X.beginPath();X.moveTo(px+68,174);X.lineTo(px+87,150);X.lineTo(px+106,174);X.fill();X.fillStyle='#d8b030';X.fillRect(px+68,24,38,5);X.beginPath();X.moveTo(px+76,92);X.lineTo(px+76,76);X.lineTo(px+82,84);X.lineTo(px+87,72);X.lineTo(px+92,84);X.lineTo(px+98,76);X.lineTo(px+98,92);X.fill()}
- X.fillStyle='#16101c';X.fillRect(cx-20,G,W+40,H-G);X.strokeStyle='#241a2c';X.lineWidth=2;for(let x=Math.floor(cx/120)*120;x<cx+W+120;x+=120){X.beginPath();X.moveTo(x,G);X.lineTo(x-40,H);X.stroke()}
- if(hallDmg>0){X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;for(let k=0;k<7;k++){let x=B.x+(k-3)*120,y=G;X.beginPath();X.moveTo(x,y);for(let j=1;j<=6;j++){x+=((k*37+j*53)%41)-20;y-=45*hallDmg*(1+((k+j)%3)*.3);X.lineTo(x,y)}X.stroke()}const cg=X.createLinearGradient(0,0,0,H*.6);cg.addColorStop(0,'rgba(6,3,10,'+hallDmg*.9+')');cg.addColorStop(1,'rgba(6,3,10,0)');X.fillStyle=cg;X.fillRect(cx-20,0,W+40,H)}
+ X.fillStyle='#16101c';X.fillRect(-400,G,WW+800,H-G);X.strokeStyle='#241a2c';X.lineWidth=2;for(let x=-400;x<WW+800;x+=120){X.beginPath();X.moveTo(x,G);X.lineTo(x-40,H);X.stroke()}
+ if(hallDmg>0){X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;for(let k=0;k<7;k++){let x=B.x+(k-3)*120,y=G;X.beginPath();X.moveTo(x,y);for(let j=1;j<=6;j++){x+=((k*37+j*53)%41)-20;y-=45*hallDmg*(1+((k+j)%3)*.3);X.lineTo(x,y)}X.stroke()}const cg=X.createLinearGradient(0,0,0,H*.6);cg.addColorStop(0,'rgba(6,3,10,'+hallDmg*.9+')');cg.addColorStop(1,'rgba(6,3,10,0)');X.fillStyle=cg;X.fillRect(-400,0,WW+800,H)}
  X.fillStyle='#5e0f1c';X.fillRect(300,G,1100,14);X.fillStyle='#d8b030';X.fillRect(300,G,1100,2);
  X.fillStyle='#2a1c30';X.fillRect(1380,G-18,260,18);X.fillStyle='#34223a';X.fillRect(1410,G-36,200,18);X.fillStyle='#3e2a44';X.fillRect(1440,G-54,140,18);X.fillStyle='#5e0f1c';X.fillRect(1480,G-54,60,54);
  X.fillStyle='#4a1220';X.beginPath();X.moveTo(1466,G-54);X.lineTo(1466,G-216);X.lineTo(1488,G-244);X.lineTo(1510,G-222);X.lineTo(1532,G-244);X.lineTo(1554,G-216);X.lineTo(1554,G-54);X.closePath();X.fill();X.strokeStyle='#c9a227';X.lineWidth=3;X.stroke();
  X.fillStyle='#6a1a2e';X.fillRect(1478,G-200,64,120);X.fillStyle='#5a1626';X.fillRect(1456,G-84,104,30);X.fillStyle='#c9a227';X.fillRect(1456,G-86,104,4);X.fillRect(1448,G-104,18,50);X.fillRect(1554,G-104,18,50);
 }
+
 function drawKing(){
  const by=G-B.fy,cast=B.cast||0,cp=B.st==='cut'?B.cp:'',sit=cp==='sit',walk=cp==='walk'||cp==='stand',hov=!sit&&!walk,ex=B.ex||0,dz=B.st==='stag';
  const glow=!dz&&(ex===3||B.st==='atk'||B.st==='kroar'||B.rage),fl=Math.sin(tm*4)*6,bob=hov?Math.sin(tm*3)*3:0,shk=B.shk||0;
@@ -1228,7 +1307,7 @@ function drawKing(){
  X.fillStyle='#e22';X.beginPath();X.arc(0,-6,3,0,6.28);X.fill();X.fillStyle='#38f';X.beginPath();X.arc(-9,-4,2.2,0,6.28);X.fill();X.beginPath();X.arc(9,-4,2.2,0,6.28);X.fill();X.restore();
  X.restore();
 }
-function puff(x,n){for(let i=0;i<n;i++)fx.push({x:x+(Math.random()-.5)*16,y:G-3,vx:(Math.random()-.5)*220,vy:-50-Math.random()*90,l:.35,c:'#8a7d6e'})}
+function puff(x,n,customY){for(let i=0;i<n;i++)fx.push({x:x+(Math.random()-.5)*16,y:(customY!==undefined?customY:G-3),vx:(Math.random()-.5)*220,vy:-50-Math.random()*90,l:.35,c:'#8a7d6e'})}
 function limb(x,y,a,k,l,c,w){const kx=x+Math.sin(a)*l,ky=y+Math.cos(a)*l,fx2=kx+Math.sin(a-k)*l,fy2=ky+Math.cos(a-k)*l;X.strokeStyle=c;X.lineWidth=w||8;X.lineCap='round';X.lineJoin='round';X.beginPath();X.moveTo(x,y);X.lineTo(kx,ky);X.lineTo(fx2,fy2);X.stroke()}
 function catHead(x,y,eye,m,rot){
  const FUR='#e8944a',FURD='#b8622a',BELLY='#f6d9b0';
@@ -1250,7 +1329,7 @@ function catHead(x,y,eye,m,rot){
 function hasK(){return (P.kn&&!P.sth)||(ci<CI&&ik===3&&kp>.4)}
 function figure(px,al){
  const FUR='#e8944a',FURD='#b8622a',FURM='#d98238',BELLY='#f6d9b0';
- const g=P.y>=G||(B.lida&&lidaArena.table&&P.y>=G-56&&P.x>1086&&P.x<1314),spd=Math.abs(P.vx),run=g&&spd>25&&!P.act&&!P.blk,ph=tm*(spd>300?22:15),at=P.at;
+ const g=P.y>=G||(B.lida&&lidaArena.table&&P.y>=G-56&&P.x>996&&P.x<1224),spd=Math.abs(P.vx),run=g&&spd>25&&!P.act&&!P.blk,ph=tm*(spd>300?22:15),at=P.at;
  let lean=0,bob=Math.sin(tm*3)*1.4,cr=0,fa=.18,ba=-.2,fk=.1,bk=.1,sw=2.3,ba2=.5,eye=1,m=0,hr=0;
  if(run){fa=Math.sin(ph)*.85;ba=-fa;fk=Math.max(0,-Math.sin(ph))*1.1;bk=Math.max(0,Math.sin(ph))*1.1;bob=-Math.abs(Math.sin(ph))*4;lean=.14;sw=1.9+Math.sin(ph)*.25;ba2=.8*Math.sin(ph);hr=Math.sin(ph*2)*.05}
  if(!g){const up=P.vy<0;fa=up?.7:.5;ba=up?-.5:-.3;fk=up?1.3:.4;bk=up?1.1:.3;lean=up?-.06:.1;sw=up?1.2:2.6;bob=0;hr=up?-.15:.15}
@@ -1350,7 +1429,7 @@ function cutP(dt){P.inv=9;P.act='';P.blk=false;
 function cine(){
  const tg=(st!=='title'&&(ci<CI||st==='cut1'||st==='cut2'||st==='cut3'||st==='cut4'||(B.st==='dead'&&B.t<6.4)))?1:0;lbk=lerp(lbk,tg,.08);
  if(B.st==='dead'&&!B.kg&&!B.lida&&B.t>5.4){X.fillStyle='rgba(0,0,0,'+cl((B.t-5.4)/1.2)+')';X.fillRect(0,0,W,H)}
- if(lbk>.01){X.fillStyle='#000';X.fillRect(0,0,W,54*lbk);X.fillRect(0,H-54*lbk,W,54*lbk)}
+ if(lbk>.01){X.fillStyle='#000';X.fillRect(0,0,W,8*lbk);X.fillRect(0,H-8*lbk,W,8*lbk)}
  if(B.st==='dead'&&B.lida){
   const t=B.t,cap=(s,a,b)=>{if(t>a&&t<b){X.globalAlpha=cl(Math.min(t-a,b-t)*2);txt(s,W/2,H-66,20,'#b8ffca');X.globalAlpha=1}};
   cap('The shape-shifting witch dissolves into ash.',.6,2.2);
@@ -1473,8 +1552,8 @@ function render(){
  if(B.kg&&stage!==3)drawHall(cx);
  else{
   if(stage===3)drawRubble();
-  X.fillStyle=B.lida?'#1c211e':stage===3?'#1c2432':'#24201c';X.fillRect(cx-20,G,W+40,H-G);
-  X.fillStyle=B.lida?'#324236':stage===3?'#2d3a4e':'#3d352e';X.fillRect(cx-20,G,W+40,4);
+  X.fillStyle=B.lida?'#1c211e':stage===3?'#1c2432':'#24201c';X.fillRect(-400,G,WW+800,H-G);
+  X.fillStyle=B.lida?'#324236':stage===3?'#2d3a4e':'#3d352e';X.fillRect(-400,G,WW+800,6);
   if(B.lida)drawLidaArena();
   if(stage===3)drawRipples(cx);
  }
@@ -1501,6 +1580,17 @@ function render(){
  for(const f of fx){X.globalAlpha=cl(f.l*2.5);X.fillStyle=f.c;X.fillRect(f.x-2,f.y-2,4,4)}
  X.globalAlpha=1;
  X.restore();
+ if(B.ph===3&&B.pw!==0&&B.st!=='dead'){
+  X.save();X.globalAlpha=.78+.22*Math.sin(tm*24);
+  const fromLeft=B.pw>0, edge=fromLeft?28:W-28;
+  const warnY=H-88;
+  X.fillStyle='rgba(12,18,28,.82)';X.fillRect(fromLeft?12:W-292,warnY,280,58);
+  X.strokeStyle=fromLeft?'#ff624e':'#66c9ff';X.lineWidth=3;X.strokeRect(fromLeft?12:W-292,warnY,280,58);
+  X.fillStyle=fromLeft?'#ff705d':'#83d8ff';X.font='bold 20px Georgia';X.textAlign=fromLeft?'left':'right';
+  X.fillText(fromLeft?'HORSE CHARGE  >>>':'<<<  HORSE CHARGE',fromLeft?26:W-26,warnY+36);
+  X.font='bold 32px Georgia';X.fillText(fromLeft?'»':'«',edge,H-12);
+  X.restore();
+ }
  if(stage===3)drawRain();
  if(flash>0){X.fillStyle='rgba(255,250,235,'+flash+')';X.fillRect(0,0,W,H)}
  // HUD
@@ -1514,12 +1604,34 @@ function render(){
   if(B.st!=='intro'&&B.st!=='cut'&&B.st!=='cut3'&&B.st!=='cut4'){
    const bossName=B.lida?'Lida the Terrible':B.beast?'Barkus, the Rabid Hound':B.kg?'King Barkus, the Thunder Hound':B.ph===3?'Spirit of Ser Varkus':'Ser Varkus, the Ashen Knight';
    const barCol=B.lida?'#52b865':B.beast?'#b81818':B.kg?'#d8a020':B.ph===3?'#4aa8d8':'#b83228';
-   txt(bossName,W-24,20,15,'#d8cfc2','right');
-   bar(W-384,26,360,14,B.hp/B.max,barCol);
-   if(B.fl>0){X.fillStyle='rgba(255,255,255,'+(B.fl*5)+')';X.fillRect(W-384,26,360*cl(B.hp/B.max),14)}
-   bar(W-384,44,360,7,B.post/100,B.st==='stag'?'#ffd76a':'#d49b38');
-   if(B.st==='stag'){X.globalAlpha=.6+.4*Math.sin(tm*14);txt('STAGGERED — STRIKE NOW',W-24,68,14,'#ffd76a','right');X.globalAlpha=1}
+   // Bottom-middle boss HUD
+   const bx=W/2-220, by=H-56;
+   txt(bossName,W/2,by-14,14,'#d8cfc2','center');
+   bar(bx,by,440,14,B.hp/B.max,barCol);
+   if(B.fl>0){X.fillStyle='rgba(255,255,255,'+(B.fl*5)+')';X.fillRect(bx,by,440*cl(B.hp/B.max),14)}
+   // Phase transition tick marks
+   X.fillStyle='rgba(255,255,255,0.7)';
+   if(B.lida){
+    X.fillRect(bx+440*0.5,by,2,14); // 50% Phase 2 tick
+   }else if(B.kg&&!B.beast){
+    X.fillRect(bx+440*(1-0.66),by,2,14);
+    X.fillRect(bx+440*(1-0.33),by,2,14);
+   }else if(!B.kg&&!B.lida){
+    X.fillRect(bx+440*(1-0.66),by,2,14);
+    X.fillRect(bx+440*(1-0.33),by,2,14);
+   }
+   bar(bx,by+17,440,7,B.post/100,B.st==='stag'?'#ffd76a':'#d49b38');
+   if(B.st==='stag'){X.globalAlpha=.6+.4*Math.sin(tm*14);txt('STAGGERED — STRIKE NOW',W/2,by-28,14,'#ffd76a','center');X.globalAlpha=1}
   }
+  // Scythe cooldown bar & Cat Roar ready under player HUD
+  const chgReady=P.sc>=B.max*.3;
+  bar(24,58,230,8,P.sc/(B.max*.3),chgReady?'#ff3030':'#7a1820');
+  if(chgReady){X.globalAlpha=.6+.4*Math.sin(tm*12);txt('[E] CAT ROAR READY',24,82,13,'#ff5a5a','left');X.globalAlpha=1}
+  // Dedicated Scythe Cooldown Progress Bar
+  const scyProg = P.rcd > 0 ? 1 - (P.rcd / 1.5) : 1;
+  bar(24, chgReady?92:78, 230, 8, scyProg, P.rcd>0?'#5a4a8a':'#9a7aff');
+  txt(P.rcd>0?'Scythe Cooldown: '+P.rcd.toFixed(1)+'s':'SCYTHE READY', 24, (chgReady?92:78)-3, 11, '#d8d0ff', 'left');
+
   if(ann>0){X.globalAlpha=cl(ann*1.5);txt('CAT ROAR',W/2,H/2-110,48,'#ff3030');X.globalAlpha=1}
  }
  if(B.st==='intro'&&ci>=CI){X.globalAlpha=cl(Math.min(B.t,3-B.t)*2);txt('SER VARKUS',W/2,H/2-20,44,'#e8dfd2');txt('the Ashen Knight',W/2,H/2+14,20,'#a89f90');X.globalAlpha=1}
@@ -1544,7 +1656,7 @@ function loop(t){
  const dt=Math.min(.033,(t-last)/1000||.016);last=t;
  if(pr('KeyP')&&st==='play')paused=!paused;
  if(!paused){
-  if(st==='title'){tm+=dt;if(pr('Enter','Space')){reset();st='play'}if(pr('Digit2')){reset();seen=1;ci=CI;P.kn=1;startVarkus()}if(pr('Digit3')){reset();seen=1;ci=CI;P.kn=1;setupKing(1)}}
+  if(st==='title'){tm+=dt;if(pr('Enter','Space')){reset();st='play'}if(pr('Digit1')){reset();seen=1;ci=CI;P.kn=1;startLida(1)}if(pr('Digit2')){reset();seen=1;ci=CI;P.kn=1;startVarkus()}if(pr('Digit3')){reset();seen=1;ci=CI;P.kn=1;setupKing(1)}}
   else if(st==='cut1'){cut1Update(dt);camDir()}
   else if(st==='cut2'){cut2Update(dt);camDir()}
   else if(st==='cut3'){cut3Update(dt);camDir()}
